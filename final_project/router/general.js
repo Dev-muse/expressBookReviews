@@ -4,6 +4,7 @@ const { authenticated } = require('./auth_users.js');
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
+const axios = require('axios')
 
 
 const userExists = (username,password)=>{
@@ -32,8 +33,9 @@ if(!username||!password){
 });
 
 // Get the book list available in the shop
-public_users.get('/',function (req, res) {
+public_users.get('/',function(req, res) {
   //Write your code here
+  
   return res.send(JSON.stringify({books},null,4))
 });
 
@@ -52,21 +54,18 @@ public_users.get('/isbn/:isbn',function (req, res) {
   
 // Get book details based on author
 public_users.get('/author/:author',function (req, res) {
-  const author = req.params.author;
+  const authorParam = req.params.author;
   const bookValues = Object.values(books);
-  const filteredBooks = bookValues.filter(book=>{
-    return book.author==author
-  })
 
-  const bookDetail= filteredBooks[0]
+  // Use RegEx to match author name (case-insensitive)
+  const filteredBooks = bookValues.filter(book => {
+    return new RegExp(authorParam, 'i').test(book.author);
+  });
 
- console.log(bookDetail)
-
-  if(bookDetail){
-    return res.status(200).send(JSON.stringify({bookDetail},null,4));
-  }else{
-    //Write your code here
-    return res.status(404).json({message: "Book not found"});
+  if (filteredBooks.length > 0) {
+    return res.status(200).send(JSON.stringify({ booksByAuthor: filteredBooks }, null, 4));
+  } else {
+    return res.status(404).json({ message: "Book not found" });
   }
 });
 
@@ -76,14 +75,13 @@ const bookTitle = req.params.title;
 
 const bookValues = Object.values(books);
   const filteredBooks = bookValues.filter(book=>{
-    return book.title==bookTitle
+    return new RegExp(bookTitle,'i').test(book.title)
   })
 
-  const bookDetail= filteredBooks[0]
 
 
-  if(bookDetail){
-    return res.status(200).send(JSON.stringify({bookDetail},null,4));
+  if(filteredBooks.length>0){
+    return res.status(200).send(JSON.stringify({filteredBooks},null,4));
   }else{
     //Write your code here
     return res.status(404).json({message: "Book not found"});
@@ -107,4 +105,53 @@ public_users.get('/review/:isbn',function (req, res) {
   }
 });
 
+
+const getAllBooks = async () => {
+  try {
+    const response = await axios.get('http://localhost:5000/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching books:', error.message);
+  }
+};
+
+
+const getBookByIsbn = async (isbn) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/isbn/${isbn}`)
+      return response.data
+    } catch (error) {
+        console.log('error Fetching book',error.message)
+    }
+}
+
+
+
+// get book by author
+const getBookByAuthor = async (author) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/author/${author}`)
+      return response.data
+    } catch (error) {
+      console.log('Error fetching request',error.message)
+    }
+}
+
+// get book by title
+const getBookByTitle = async(bookTitle) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/title/${bookTitle}`)
+      return response.data
+    } catch (error) {
+      console.log('Error:',error.message)
+    }
+}
+
+getBookByTitle('things').then(data=>console.log(data))
+
+
+
+
+
 module.exports.general = public_users;
+
